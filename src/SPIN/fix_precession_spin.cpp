@@ -261,12 +261,12 @@ int FixPrecessionSpin::setmask()
 void FixPrecessionSpin::init()
 {
   const double hbar = force->hplanck/MY_2PI;    // eV/(rad.THz)
-  const double mub = 5.78901e-5;                // in eV/T
-  const double gyro = 2.0*mub/hbar;             // in rad.THz/T
+  const double mub = 5.78901e-5;                // in eV/T (1 = 5.78901e-5 eV/(muB*T))
+  const double gyro = 2.0*mub;             // in eV/(muB*T)
 
   // convert field quantities to rad.THz
 
-  H_field *= gyro;
+  H_field *= gyro; // in eV/muB
   Kah = Ka/hbar;
   k1ch = k1c/hbar;
   k2ch = k2c/hbar;
@@ -410,9 +410,14 @@ void FixPrecessionSpin::compute_single_precession(int i, double spi[3], double f
 void FixPrecessionSpin::compute_zeeman(int i, double fmi[3])
 {
   double **sp = atom->sp;
+  /*
   fmi[0] += sp[i][3]*hx;
   fmi[1] += sp[i][3]*hy;
   fmi[2] += sp[i][3]*hz;
+  */
+  fmi[0] += hx;
+  fmi[1] += hy;
+  fmi[2] += hz;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -421,7 +426,7 @@ double FixPrecessionSpin::compute_zeeman_energy(double spi[4])
 {
   double energy = 0.0;
   double scalar = nhx*spi[0]+nhy*spi[1]+nhz*spi[2];
-  energy = hbar*H_field*spi[3]*scalar;
+  energy = H_field*spi[3]*scalar; // H_field in eV/uB; spi[3] in uB; energy in eV.
   return energy;
 }
 
