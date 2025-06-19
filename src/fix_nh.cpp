@@ -63,7 +63,7 @@ FixNH::FixNH(LAMMPS *lmp, int narg, char **arg) :
   id_temp(nullptr), id_press(nullptr),
   eta(nullptr), eta_dot(nullptr), eta_dotdot(nullptr),
   eta_mass(nullptr), etap(nullptr), etap_dot(nullptr), etap_dotdot(nullptr),
-  etap_mass(nullptr)
+  etap_mass(nullptr), mass(nullptr)
 {
   if (narg < 4) error->all(FLERR,"Illegal fix nvt/npt/nph command");
 
@@ -149,9 +149,15 @@ FixNH::FixNH(LAMMPS *lmp, int narg, char **arg) :
                    "Target temperature for fix nvt/npt/nph cannot be 0.0");
       iarg += 4;
     } else if (strcmp(arg[iarg],"mass") == 0) {
-      mass = utils::numeric(FLERR,arg[iarg+1],false,lmp);
+      int ntypes = atom->ntypes;
+      if (iarg + 1 + ntypes > narg)
+        error->all(FLERR,"Illegal fix nvt/npt/nph command");
+      delete [] mass;
+      mass = new double[ntypes+1];
+      for (int j = 1; j <= ntypes; j++)
+        mass[j] = utils::numeric(FLERR,arg[iarg+j],false,lmp);
       tstat_spin_flag = 1;
-      iarg += 2;
+      iarg += ntypes + 1;
     } else if (strcmp(arg[iarg],"rand") == 0) {
       rands = utils::numeric(FLERR,arg[iarg+1],false,lmp);
       iarg += 2;
@@ -668,6 +674,7 @@ FixNH::~FixNH()
       delete [] etap_mass;
     }
   }
+  delete [] mass;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -695,6 +702,12 @@ void FixNH::init()
     if (idilate == -1)
       error->all(FLERR,"Fix nvt/npt/nph dilate group ID does not exist");
     dilate_group_bit = group->bitmask[idilate];
+  }
+
+  if (mass == nullptr) {
+    int ntypes = atom->ntypes;
+    mass = new double[ntypes+1];
+    for (int i = 1; i <= ntypes; i++) mass[i] = 1.0;
   }
 
   // ensure no conflict with fix deform
@@ -830,11 +843,16 @@ void FixNH::setup(int /*vflag*/)
       s_dot[i][2] = 0.0;
     
       // s_mass[i] = m[type[i]]/force->ftm2v * mass;
-      s_mass[i] = m[type[i]] * mass;
+      s_mass[i] = m[type[i]] * mass[type[i]];
       // s_mass[i] = 0.00275;
   }
   MPI_Allreduce(&s_dof,&spin_dof,1,MPI_INT,MPI_SUM,world);
-
+  std::cout << "s_mass by type: ";
+  int ntypes_print = atom->ntypes;
+  for (int j = 1; j <= ntypes_print; j++)
+    std::cout << m[j] * mass[j] << " ";
+  std::cout << std::endl;
+	
   // spin velocity create
   double vx, vy, vz, factor;
   double cur_t = 0;

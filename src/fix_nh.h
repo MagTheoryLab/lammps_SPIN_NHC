@@ -96,7 +96,7 @@ class FixNH : public Fix {
   double **s_dotdot;
   double  *is_spin;
   int spin_dof;
-  double mass, rands;
+  double *mass, rands;
   int lattice_flag;
 
   int mtchain;                 // length of chain
