@@ -150,14 +150,24 @@ FixNH::FixNH(LAMMPS *lmp, int narg, char **arg) :
       iarg += 4;
     } else if (strcmp(arg[iarg],"mass") == 0) {
       int ntypes = atom->ntypes;
-      if (iarg + 1 + ntypes > narg)
+      if (iarg + 2 > narg) error->all(FLERR,"Illegal fix nvt/npt/nph command");
+      int count = 0;
+      while (count < ntypes && iarg + 1 + count < narg &&
+             utils::is_double(arg[iarg+1+count]))
+        count++;
+      if (count != 1 && count != ntypes)
         error->all(FLERR,"Illegal fix nvt/npt/nph command");
       delete [] mass;
       mass = new double[ntypes+1];
-      for (int j = 1; j <= ntypes; j++)
-        mass[j] = utils::numeric(FLERR,arg[iarg+j],false,lmp);
+      if (count == 1) {
+        double val = utils::numeric(FLERR,arg[iarg+1],false,lmp);
+        for (int j = 1; j <= ntypes; j++) mass[j] = val;
+      } else {
+        for (int j = 1; j <= ntypes; j++)
+          mass[j] = utils::numeric(FLERR,arg[iarg+j],false,lmp);
+      }
       tstat_spin_flag = 1;
-      iarg += ntypes + 1;
+      iarg += count + 1;
     } else if (strcmp(arg[iarg],"rand") == 0) {
       rands = utils::numeric(FLERR,arg[iarg+1],false,lmp);
       iarg += 2;
